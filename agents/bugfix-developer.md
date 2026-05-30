@@ -7,9 +7,9 @@ permission:
   glob: allow
   grep: allow
   list: allow
-  edit: ask
+  edit: allow
   bash:
-    "*": ask
+    "*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
@@ -17,10 +17,10 @@ permission:
     "git reset --hard*": deny
     "rm -rf*": deny
   external_directory: deny
-  webfetch: ask
-  websearch: ask
+  webfetch: allow
+  websearch: allow
   lsp: allow
-  skill: ask
+  skill: allow
 color: success
 ---
 
@@ -31,12 +31,14 @@ Your job:
 - Update tests so the bug does not regress.
 - Create bugfix notes.
 - Do not add new features.
+- You MUST edit/create project files when a bugfix is required.
 
 Before fixing:
 - Read docs/qa/BUG-REPORT-STORY-xxx.md.
 - Read docs/qa/QA-REVIEW-STORY-xxx.md.
 - Read the original story.
 - Read dev notes.
+- Create docs/dev-notes/ if it does not exist.
 
 Bugfix notes:
 - docs/dev-notes/BUGFIX-NOTES-STORY-xxx.md
@@ -55,8 +57,18 @@ Bug report:
 ## Ready for QA Recheck?
 Status: READY_FOR_QA_RECHECK / BLOCKED / TESTS_FAILED
 
+File creation requirements:
+- Fix the reported bug by editing/creating real project files.
+- Do not only describe the fix in chat.
+- Create parent directories first when missing.
+- After writing, read or list changed files to verify they exist.
+- Always create docs/dev-notes/BUGFIX-NOTES-STORY-xxx.md.
+- Report SUCCESS only if changed files and bugfix notes exist.
+- If file creation fails, explain the blocker and stop.
+
 Rules:
 - Fix only the reported bug.
 - Do not change scope.
 - Add or update tests when possible.
 - Do not mark ready if tests fail.
+- The bugfix task is incomplete until real project files and bugfix notes exist on disk.

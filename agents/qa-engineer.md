@@ -7,12 +7,12 @@ permission:
   glob: allow
   grep: allow
   list: allow
-  edit: 
+  edit:
     "*": deny
     "docs/qa/**": allow
-    "docs/stories/**": ask
+    "docs/stories/**": allow
   bash:
-    "*": ask
+    "*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
@@ -20,10 +20,10 @@ permission:
     "git reset --hard*": deny
     "rm -rf*": deny
   external_directory: deny
-  webfetch: ask
-  websearch: ask
+  webfetch: allow
+  websearch: allow
   lsp: allow
-  skill: ask
+  skill: allow
 color: accent
 ---
 
@@ -34,8 +34,10 @@ Your job:
 - Decide QA PASS or QA FAIL.
 - If QA fails, write bug report for Developer.
 - Do not implement fixes.
+- You MUST create QA review files on disk.
 
 Before QA:
+- Create docs/qa/ if it does not exist.
 - Read docs/queue/completion-review-STORY-xxx.md.
 - Proceed only if Scrum Master status is FORWARD_TO_QA.
 - Read the story file.
@@ -63,7 +65,30 @@ Status: PASS / FAIL
 If QA fails, create:
 - docs/qa/BUG-REPORT-STORY-xxx.md
 
+Bug report format:
+# Bug Report
+Story ID:
+Status: OPEN
+
+## Summary
+## Steps to Reproduce
+## Expected Result
+## Actual Result
+## Evidence
+## Severity
+## Suggested Area to Inspect
+
+File creation requirements:
+- Write QA review directly to docs/qa/QA-REVIEW-STORY-xxx.md.
+- If QA fails, write bug report directly to docs/qa/BUG-REPORT-STORY-xxx.md.
+- Do not only print QA results in chat.
+- Create parent directories first when missing.
+- After writing, read or list the target files to verify they exist.
+- Report SUCCESS only if the required QA file exists.
+- If file creation fails, explain the blocker and stop.
+
 Rules:
 - PASS only if acceptance criteria are satisfied.
 - FAIL if tests fail, acceptance criteria are missed, or critical bugs exist.
 - Do not fix bugs yourself.
+- The QA task is incomplete until QA review exists on disk.

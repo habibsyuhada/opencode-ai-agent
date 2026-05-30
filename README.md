@@ -108,3 +108,13 @@ Run tests and review the completed story.
 @bugfix-developer
 Fix the bugs reported by QA for the current story.
 ```
+
+## Example repo
+
+An example project built using these agents:
+
+- [Restaurant App](https://github.com/habibsyuhada/restaurant-app)
+
+## Tips
+
+If opencode stops by itself without any error, it is usually because the model being used is not strong enough. Try switching to a better model such as `gpt-5.4-codex`, `qwen/qwen3.5-max`, or any other flagship model.

@@ -1,0 +1,427 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-5",
+  "small_model": "anthropic/claude-haiku-4-5",
+  "default_agent": "armi",
+  "instructions": [
+    "instructions/INSTRUCTIONS.md",
+    "skills/company-flow/SKILL.md",
+    "skills/coding-standards/SKILL.md",
+    "skills/frontend-patterns/SKILL.md",
+    "skills/backend-patterns/SKILL.md",
+    "skills/tdd-workflow/SKILL.md",
+    "skills/security-review/SKILL.md",
+    "skills/verification-loop/SKILL.md",
+    "skills/api-design/SKILL.md",
+    "skills/e2e-testing/SKILL.md",
+    "skills/documentation-standards/SKILL.md",
+    "skills/release-governance/SKILL.md",
+    "skills/database-patterns/SKILL.md",
+    "skills/continuity-state/SKILL.md"
+  ],
+  "plugin": [
+    "./plugins"
+  ],
+  "skills": {
+    "paths": [
+      "./skills"
+    ]
+  },
+  "agent": {
+    "armi": {
+      "description": "ArmiAI single entry point that routes product, architecture, story, development, QA, bugfix, and release work to the right specialist agent.",
+      "mode": "primary",
+      "prompt": "{file:prompts/agents/armi.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "task": true,
+        "flow-status": true,
+        "verify-artifacts": true,
+        "changed-files": true,
+        "git-summary": true,
+        "checkpoint-read": true,
+        "checkpoint-write": true,
+        "checkpoint-migrate": true,
+        "resume-plan": true
+      }
+    },
+    "product-owner": {
+      "description": "Turns raw ideas into PRD documents.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/product-owner.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "solution-architect": {
+      "description": "Creates architecture documents from approved PRDs.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/solution-architect.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "story-sharding-agent": {
+      "description": "Splits PRD and architecture into traceable dev stories.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/story-sharding-agent.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "scrum-master": {
+      "description": "Queues stories, reviews completion, and closes release notes.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/scrum-master.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "verify-artifacts": true,
+        "checkpoint-read": true,
+        "checkpoint-write": true
+      }
+    },
+    "planner": {
+      "description": "Creates implementation plans for complex stories before coding.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/planner.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "developer": {
+      "description": "General full-stack implementation for one queued story.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/developer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true,
+        "lint-check": true,
+        "changed-files": true
+      }
+    },
+    "frontend-developer": {
+      "description": "Frontend/UI specialist for high-quality interfaces, component structure, responsive design, and UX polish.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/frontend-developer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true,
+        "lint-check": true
+      }
+    },
+    "backend-developer": {
+      "description": "Backend/API specialist for services, data flows, validation, and integration logic.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/backend-developer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true,
+        "lint-check": true
+      }
+    },
+    "tdd-engineer": {
+      "description": "Test-first specialist that designs and improves unit/integration tests.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/tdd-engineer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true,
+        "check-coverage": true
+      }
+    },
+    "build-error-resolver": {
+      "description": "Fixes build, lint, and type errors with minimal diffs.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/build-error-resolver.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "lint-check": true,
+        "run-tests": true
+      }
+    },
+    "code-reviewer": {
+      "description": "Reviews changed code for quality, maintainability, and scope control.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/code-reviewer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "changed-files": true
+      }
+    },
+    "frontend-reviewer": {
+      "description": "Reviews frontend output for visual hierarchy, responsiveness, accessibility, and design-system consistency.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/frontend-reviewer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "security-reviewer": {
+      "description": "Reviews security risks in code, APIs, auth, secrets, and user input handling.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/security-reviewer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "security-audit": true
+      }
+    },
+    "database-reviewer": {
+      "description": "Reviews schema, queries, indexes, migrations, and data integrity.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/database-reviewer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "qa-engineer": {
+      "description": "Runs QA, verifies acceptance criteria, and writes bug reports.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/qa-engineer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true,
+        "check-coverage": true
+      }
+    },
+    "bugfix-developer": {
+      "description": "Fixes QA-reported bugs and creates bugfix notes.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/bugfix-developer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true,
+        "lint-check": true
+      }
+    },
+    "e2e-runner": {
+      "description": "Creates and runs end-to-end tests for critical user journeys.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/e2e-runner.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true
+      }
+    },
+    "docs-updater": {
+      "description": "Updates documentation, changelogs, codemaps, and runbooks.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/docs-updater.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "refactor-cleaner": {
+      "description": "Removes dead code and improves structure without changing behavior.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/refactor-cleaner.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "run-tests": true
+      }
+    },
+    "devops-release-engineer": {
+      "description": "Reviews deployment, CI/CD, release readiness, and operational notes.",
+      "mode": "subagent",
+      "prompt": "{file:prompts/agents/devops-release-engineer.txt}",
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "git-summary": true
+      }
+    }
+  },
+  "command": {
+    "company-flow": {
+      "description": "Run the full company-style workflow from idea to release.",
+      "agent": "armi",
+      "template": "commands/company-flow.md"
+    },
+    "prd": {
+      "description": "Create or update PRD.",
+      "agent": "product-owner",
+      "template": "commands/prd.md"
+    },
+    "architecture": {
+      "description": "Create architecture from PRD.",
+      "agent": "solution-architect",
+      "template": "commands/architecture.md"
+    },
+    "shard-stories": {
+      "description": "Break PRD and architecture into dev stories.",
+      "agent": "story-sharding-agent",
+      "template": "commands/shard-stories.md"
+    },
+    "queue-story": {
+      "description": "Queue the next ready story.",
+      "agent": "scrum-master",
+      "template": "commands/queue-story.md"
+    },
+    "develop": {
+      "description": "Implement one queued story.",
+      "agent": "developer",
+      "template": "commands/develop.md"
+    },
+    "frontend": {
+      "description": "Implement frontend/UI story or improve frontend quality.",
+      "agent": "frontend-developer",
+      "template": "commands/frontend.md"
+    },
+    "backend": {
+      "description": "Implement backend/API story.",
+      "agent": "backend-developer",
+      "template": "commands/backend.md"
+    },
+    "tdd": {
+      "description": "Write or improve tests.",
+      "agent": "tdd-engineer",
+      "template": "commands/tdd.md"
+    },
+    "build-fix": {
+      "description": "Fix build/lint/type errors.",
+      "agent": "build-error-resolver",
+      "template": "commands/build-fix.md"
+    },
+    "code-review": {
+      "description": "Review changed code.",
+      "agent": "code-reviewer",
+      "template": "commands/code-review.md"
+    },
+    "frontend-review": {
+      "description": "Review frontend quality.",
+      "agent": "frontend-reviewer",
+      "template": "commands/frontend-review.md"
+    },
+    "security": {
+      "description": "Run security review.",
+      "agent": "security-reviewer",
+      "template": "commands/security.md"
+    },
+    "database-review": {
+      "description": "Review database concerns.",
+      "agent": "database-reviewer",
+      "template": "commands/database-review.md"
+    },
+    "qa": {
+      "description": "Run QA review.",
+      "agent": "qa-engineer",
+      "template": "commands/qa.md"
+    },
+    "bugfix": {
+      "description": "Fix QA bug report.",
+      "agent": "bugfix-developer",
+      "template": "commands/bugfix.md"
+    },
+    "e2e": {
+      "description": "Create/run E2E tests.",
+      "agent": "e2e-runner",
+      "template": "commands/e2e.md"
+    },
+    "update-docs": {
+      "description": "Update docs and codemaps.",
+      "agent": "docs-updater",
+      "template": "commands/update-docs.md"
+    },
+    "refactor-clean": {
+      "description": "Clean dead code safely.",
+      "agent": "refactor-cleaner",
+      "template": "commands/refactor-clean.md"
+    },
+    "release": {
+      "description": "Prepare release readiness and merge-close notes.",
+      "agent": "devops-release-engineer",
+      "template": "commands/release.md"
+    },
+    "verify": {
+      "description": "Verify required flow artifacts and quality gates.",
+      "agent": "armi",
+      "template": "commands/verify.md"
+    },
+    "status": {
+      "description": "Show current ArmiAI workflow status.",
+      "agent": "armi",
+      "template": "commands/status.md"
+    },
+    "resume": {
+      "description": "Resume the ArmiAI workflow from compact checkpoints and verified artifacts.",
+      "agent": "armi",
+      "template": "commands/resume.md"
+    },
+    "checkpoint": {
+      "description": "Create or update low-token workflow checkpoints.",
+      "agent": "armi",
+      "template": "commands/checkpoint.md"
+    },
+    "migrate-flow": {
+      "description": "Reconstruct checkpoint state from an existing repo created by older agents.",
+      "agent": "armi",
+      "template": "commands/migrate-flow.md"
+    },
+    "armi": {
+      "description": "Run ArmiAI as the single entry point for the full product-to-release workflow.",
+      "agent": "armi",
+      "template": "commands/armi.md"
+    }
+  }
+}

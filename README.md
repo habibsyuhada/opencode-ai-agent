@@ -1,120 +1,115 @@
-# OpenCode Company-Style SDD Role Flow Agents
+# ArmiAI — Installable v1
 
-This agent pack follows the requested company-style workflow using role/title-based agents, not persona names.
+ECC-style ArmiAI workflow agents for OpenCode with:
 
-## Flow
-
-```txt
-Idea
-→ Product Owner: Create PRD
-→ Solution Architect: Create Architecture Documents
-→ PRD + Architecture Documents Ready
-→ Product Owner: Shard Docs into Dev Stories
-→ Scrum Master: Queue Story Files for Dev Agent
-→ Developer: Review Story Context
-→ Developer: Implement Code
-→ Developer: Write Tests
-→ Developer: Commit Code + Notes
-→ Scrum Master: Review for Completion
-→ Tests Passed?
-   ├─ Yes → Scrum Master: Forward to QA Agent
-   └─ No  → Developer: Rework + Fix
-→ QA Engineer: Run Tests + Review
-→ QA Passes?
-   ├─ Yes → Scrum Master: Merge PR & Close
-   └─ No  → QA Engineer: Write Bug Report → Developer: Fix Bugs
-```
-
-## Agents
-
-- `flow-director`
-- `product-owner`
-- `solution-architect`
-- `story-sharding-agent`
-- `scrum-master`
-- `developer`
-- `qa-engineer`
-- `bugfix-developer`
+- Armi as the single user-facing entry point
+- company-style delegation across PO, architect, story sharding, scrum, frontend, backend, TDD, review, QA, bugfix, release, docs, security, DB, and DevOps agents
+- commands, skills, tools, plugins/hooks, and global instructions
+- low-token checkpoint/resume support
+- migration helper for repos already created with older agents
+- installable CLI so you do not need to manually copy `.opencode` into every project
 
 ## Install globally
 
-Linux/macOS/WSL:
+From this extracted folder:
 
 ```bash
-chmod +x install-linux-macos.sh
-./install-linux-macos.sh
+npm install -g .
+```
+
+Or:
+
+```bash
+./install.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-.\install-windows-powershell.ps1
+.\install.ps1
 ```
 
 ## Use in any project
 
+Go to your project root:
+
 ```bash
-cd your-project
-opencode
+cd /path/to/your-project
+armiai install
+armiai migrate
+armiai status
 ```
 
-Start from idea:
+`armiai install` creates a `.opencode` symlink to the globally installed template. It does **not** copy the full folder into the project.
 
-```txt
-@flow-director
-Start company-style SDD flow from this idea:
-[describe your project idea]
+If symlink is blocked by your OS:
+
+```bash
+armiai install --copy
 ```
 
-Manual steps:
+If your project already has `.opencode` and you want to replace it safely:
 
-```txt
-@product-owner
-Create PRD from this idea:
-[describe your project idea]
+```bash
+armiai install --force
 ```
 
-```txt
-@solution-architect
-Create architecture documents from the PRD.
+The old `.opencode` will be backed up as `.opencode.backup-...`.
+
+## Continue an old repo
+
+For a repo that already has 5/20 stories completed:
+
+```bash
+armiai install
+armiai migrate
+armiai resume-plan
 ```
 
-```txt
-@story-sharding-agent
-Shard the PRD and architecture documents into dev stories.
+Then prompt OpenCode:
+
+```text
+Armi, continue this project from the current checkpoint. Do not redo completed stories.
 ```
 
-```txt
-@scrum-master
-Queue the next ready story for Developer.
+## Useful commands
+
+```bash
+armiai doctor       # check installation and project state
+armiai status       # read docs/flow-state/flow-state.json
+armiai resume-plan  # print the next suggested resume action
+armiai migrate      # scan existing docs and create low-token checkpoint state
+armiai update       # recreate project symlink to latest installed template
+armiai uninstall    # remove project symlink
+armiai where        # show global template path
 ```
 
-```txt
-@developer
-Review the queued story context, implement code, write tests, and create dev notes.
+## Where continuity lives
+
+Project-specific state is written to:
+
+```text
+docs/flow-state/flow-state.json
+docs/flow-state/story-state/STORY-xxx.json
+docs/flow-state/MIGRATION-REPORT.md
 ```
 
-```txt
-@scrum-master
-Review the story for completion.
+These files are intentionally small. They store status, artifact paths, and next actions, not full prompts or full agent responses.
+
+## Design rule
+
+The user should talk to Armi. Armi handles routing and delegation.
+
+Examples:
+
+```text
+Armi, build this feature using the full ArmiAI workflow.
 ```
 
-```txt
-@qa-engineer
-Run tests and review the completed story.
+```text
+Armi, frontend result is ugly. Improve STORY-003 and run frontend review.
 ```
 
-```txt
-@bugfix-developer
-Fix the bugs reported by QA for the current story.
+```text
+Armi, migrate this repo and continue from the next unfinished story.
 ```
-
-## Example repo
-
-An example project built using these agents:
-
-- [Restaurant App](https://github.com/habibsyuhada/restaurant-app)
-
-## Tips
-
-If opencode stops by itself without any error, it is usually because the model being used is not strong enough. Try switching to a better model such as `gpt-5.4-codex`, `qwen/qwen3.5-max`, or any other flagship model.

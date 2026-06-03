@@ -1,0 +1,31 @@
+{
+  "name": "armiai",
+  "version": "1.0.0",
+  "description": "ArmiAI: installable ECC-style AI agent workspace for resumable product-to-release project workflows.",
+  "type": "module",
+  "bin": {
+    "armiai": "./bin/armiai.mjs"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "template/",
+    "README.md",
+    "INSTALL.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "opencode",
+    "multi-agent",
+    "project-management",
+    "qa",
+    "scrum",
+    "resume",
+    "checkpoint"
+  ],
+  "license": "MIT"
+}

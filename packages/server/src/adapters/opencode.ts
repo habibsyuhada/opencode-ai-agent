@@ -396,12 +396,6 @@ export class OpenCodeAdapter implements AgentAdapter {
           durationMs,
         });
       });
-
-      // Send the prompt via stdin and close
-      if (proc.stdin) {
-        proc.stdin.write(config.prompt);
-        proc.stdin.end();
-      }
     });
   }
 
@@ -419,16 +413,24 @@ export class OpenCodeAdapter implements AgentAdapter {
     args.push('--agent', agentName);
 
     // Request structured JSON output for parsing
-    args.push('--output', 'json');
+    args.push('--format', 'json');
 
-    // Set working context directory
-    args.push('--cwd', config.workingDirectory);
+    // Set working directory
+    args.push('--dir', config.workingDirectory);
+
+    // Auto-approve permissions (non-interactive mode)
+    args.push('--dangerously-skip-permissions');
 
     // Add context files if provided
     if (config.contextFiles && config.contextFiles.length > 0) {
       for (const file of config.contextFiles) {
-        args.push('--context', file);
+        args.push('--file', file);
       }
+    }
+
+    // Add prompt as positional argument (message)
+    if (config.prompt) {
+      args.push(config.prompt);
     }
 
     return args;

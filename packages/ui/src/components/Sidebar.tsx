@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
+  FolderOpen,
   Users,
   CheckSquare,
   DollarSign,
@@ -27,6 +28,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Home', path: '/', icon: <Home size={20} /> },
+  { label: 'Projects', path: '/projects', icon: <FolderOpen size={20} /> },
   { label: 'Agents', path: '/agents', icon: <Users size={20} /> },
   { label: 'Tasks', path: '/tasks', icon: <CheckSquare size={20} /> },
   { label: 'Budget', path: '/budget', icon: <DollarSign size={20} /> },

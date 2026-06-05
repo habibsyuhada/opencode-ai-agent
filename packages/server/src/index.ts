@@ -41,6 +41,7 @@ import approvalsRoutes from './modules/governance/routes.js';
 import activityRoutes from './modules/activity/routes.js';
 import routinesRoutes from './modules/routines/routes.js';
 import secretsRoutes from './modules/secrets/routes.js';
+import orchestratorRoutes from './modules/orchestrator/routes.js';
 
 // ── Build API Sub-Application (chained for RPC type inference) ──
 //
@@ -70,6 +71,7 @@ const api = new Hono()
         activity: '/api/activity',
         routines: '/api/routines',
         secrets: '/api/secrets',
+        orchestrator: '/api/orchestrator',
       },
     });
   })
@@ -91,7 +93,9 @@ const api = new Hono()
   // Routines / scheduled jobs routes
   .route('/routines', routinesRoutes)
   // Secrets management routes (encrypted at rest, masked in responses)
-  .route('/secrets', secretsRoutes);
+  .route('/secrets', secretsRoutes)
+  // Orchestrator routes (project workflow management)
+  .route('/orchestrator', orchestratorRoutes);
 
 // ── Build Main Application (chained for RPC type inference) ──────
 

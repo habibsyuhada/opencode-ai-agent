@@ -1,4 +1,5 @@
 // ArmiAI Platform — Prisma Schema
+// Redesigned for project-based workflow with documentation-first approach.
 // See docs/schema/SCHEMA-AND-API.md for full design rationale.
 
 generator client {
@@ -82,15 +83,17 @@ model Workspace {
 // Agent — AI actor in the Org Chart
 // ──────────────────────────────────────────────────────────────
 model Agent {
-  id        String   @id @default(cuid())
-  companyId String
-  name      String
-  role      String   // e.g., 'scrum-master', 'developer', 'qa-engineer'
-  title     String?
-  managerId String?  // Self-relation for org chart
-  status    String   @default("ACTIVE") // ACTIVE, PAUSED, TERMINATED
-  config    Json?    // Optional overrides for the OpenCode template
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  role        String   // e.g., 'orchestrator', 'developer', 'qa-engineer'
+  title       String?
+  managerId   String?  // Self-relation for org chart
+  status      String   @default("ACTIVE") // ACTIVE, PAUSED, TERMINATED
+  isTemplate  Boolean  @default(false) // true = predefined template, false = company instance
+  templateKey String?  // Unique key for template lookup (e.g., 'orchestrator', 'frontend-dev')
+  config      Json?    // Agent config: instructions, tools, skills, systemPrompt
+  createdAt   DateTime @default(now())
 
   company    Company    @relation(fields: [companyId], references: [id])
   manager    Agent?     @relation("OrgChart", fields: [managerId], references: [id])
@@ -98,24 +101,87 @@ model Agent {
   tasks      Task[]     @relation("TaskAssignee")
   budgets    Budget[]
   heartbeats Heartbeat[]
+  questions  AgentQuestion[]
+  orchestratedProjects Project[] // Projects where this agent is the orchestrator
 
   @@index([companyId])
   @@index([managerId])
+  @@index([isTemplate])
+  @@index([templateKey])
 }
 
 // ──────────────────────────────────────────────────────────────
-// Project — High-level container
+// Project — High-level container (Redesigned for workflow)
 // ──────────────────────────────────────────────────────────────
 model Project {
-  id        String   @id @default(cuid())
-  companyId String
-  name      String
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  companyId       String
+  name            String
+  description     String?  // User's project description (becomes the main prompt)
+  folderPath      String?  // Absolute path where code will be generated
+  status          String   @default("DRAFT") // DRAFT, PLANNING, DOCUMENTATION, AWAITING_APPROVAL, DEVELOPMENT, TESTING, COMPLETED, PAUSED
+  phase           String   @default("INITIALIZATION") // INITIALIZATION, DOCUMENTATION, APPROVAL, DEVELOPMENT, TESTING, DEPLOYMENT
+  orchestratorId  String?  // The main orchestrator agent for this project
+  documentation   ProjectDocumentation?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id])
-  goals   Goal[]
+  company      Company      @relation(fields: [companyId], references: [id])
+  orchestrator Agent?       @relation(fields: [orchestratorId], references: [id])
+  goals        Goal[]
+  questions    AgentQuestion[]
 
   @@index([companyId])
+  @@index([status])
+  @@index([phase])
+}
+
+// ──────────────────────────────────────────────────────────────
+// ProjectDocumentation — Documentation artifacts for a project
+// ──────────────────────────────────────────────────────────────
+model ProjectDocumentation {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  prd             String?  // Product Requirements Document (markdown)
+  architecture    String?  // Architecture document (markdown)
+  techStack       String?  // Technology stack decisions (markdown)
+  stories         String?  // Generated user stories / dev tasks (markdown)
+  status          String   @default("DRAFT") // DRAFT, GENERATING, READY, APPROVED, REJECTED
+  rejectionReason String?  // Why user rejected the documentation
+  generatedAt     DateTime? // When documentation was fully generated
+  approvedAt      DateTime? // When user approved the documentation
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// ──────────────────────────────────────────────────────────────
+// AgentQuestion — Questions agents ask the user
+// ──────────────────────────────────────────────────────────────
+model AgentQuestion {
+  id          String   @id @default(cuid())
+  projectId   String
+  agentId     String
+  heartbeatId String?  // Optional: linked to a specific execution
+  question    String   // The question text
+  context     String?  // Additional context for why this question is asked
+  answer      String?  // User's answer
+  status      String   @default("PENDING") // PENDING, ANSWERED, SKIPPED
+  priority    String   @default("NORMAL") // LOW, NORMAL, HIGH, BLOCKING
+  createdAt   DateTime @default(now())
+  answeredAt  DateTime?
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  heartbeat Heartbeat? @relation(fields: [heartbeatId], references: [id])
+
+  @@index([projectId])
+  @@index([agentId])
+  @@index([status])
+  @@index([projectId, status]) // Compound: pending questions per project
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -126,6 +192,7 @@ model Goal {
   projectId String
   name      String
   status    String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  phase     String   @default("DEVELOPMENT") // DOCUMENTATION, DEVELOPMENT, TESTING
 
   project Project @relation(fields: [projectId], references: [id])
   tasks   Task[]
@@ -167,17 +234,18 @@ model Heartbeat {
   id         String   @id @default(cuid())
   taskId     String
   agentId    String
-  status     String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+  status     String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED, PAUSED_FOR_QUESTIONS
   startedAt  DateTime?
   endedAt    DateTime?
   log        String?
   tokensUsed Int      @default(0)
   cost       Float    @default(0.0)
 
-  task        Task         @relation(fields: [taskId], references: [id])
-  agent       Agent        @relation(fields: [agentId], references: [id])
+  task        Task          @relation(fields: [taskId], references: [id])
+  agent       Agent         @relation(fields: [agentId], references: [id])
   costEvents  CostEvent[]
   routineRuns RoutineRun[]
+  questions   AgentQuestion[]
 
   @@index([taskId])
   @@index([agentId])
@@ -230,9 +298,10 @@ model CostEvent {
 model Approval {
   id          String   @id @default(cuid())
   companyId   String
-  type        String
+  projectId   String?  // Linked to project for phase approvals
+  type        String   // TASK_EXECUTION, DOCUMENTATION_REVIEW, PHASE_TRANSITION, BUDGET_INCREASE
   requestedBy String   // Agent or System
-  targetType  String
+  targetType  String   // TASK, PROJECT, DOCUMENTATION, PHASE
   targetId    String
   status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
   decision    String?
@@ -243,7 +312,8 @@ model Approval {
 
   @@index([companyId])
   @@index([status])
-  @@index([companyId, status])    // Compound: governance filtering (pending approvals per company)
+  @@index([companyId, status])
+  @@index([projectId])
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -265,7 +335,7 @@ model ActivityEvent {
   @@index([companyId])
   @@index([actorId])
   @@index([targetType, targetId])
-  @@index([companyId, createdAt])  // Compound: activity feed (recent events per company)
+  @@index([companyId, createdAt])
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -278,12 +348,12 @@ model Routine {
   name               String
   description        String?
   cron               String
-  action             String   // System action to trigger
+  action             String
   enabled            Boolean  @default(true)
-  concurrencyPolicy  String   @default("ALLOW_OVERLAP") // ALLOW_OVERLAP, SKIP_IF_RUNNING, QUEUE
-  catchUpPolicy      String   @default("SKIP")          // SKIP, RUN_ONCE, RUN_ALL
+  concurrencyPolicy  String   @default("ALLOW_OVERLAP")
+  catchUpPolicy      String   @default("SKIP")
   maxConcurrentRuns  Int      @default(1)
-  timeoutMs          Int?     // Optional execution timeout
+  timeoutMs          Int?
   lastRunAt          DateTime?
   nextRunAt          DateTime?
   createdAt          DateTime @default(now())
@@ -295,7 +365,7 @@ model Routine {
   @@index([companyId])
   @@index([enabled])
   @@index([nextRunAt])
-  @@index([companyId, enabled])   // Compound: scheduler queries (enabled routines per company)
+  @@index([companyId, enabled])
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -304,7 +374,7 @@ model Routine {
 model RoutineRun {
   id          String    @id @default(cuid())
   routineId   String
-  heartbeatId String?   // Link to heartbeat if one was created
+  heartbeatId String?
   status      String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED, SKIPPED
   startedAt   DateTime?
   endedAt     DateTime?

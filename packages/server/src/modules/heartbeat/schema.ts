@@ -66,6 +66,9 @@ export const triggerHeartbeatSchema = z.object({
   /** Optional context files to include in the execution */
   contextFiles: z.array(z.string()).optional(),
 
+  /** Optional working directory override (defaults to company workspace) */
+  workingDirectory: z.string().optional(),
+
   /** Trigger type — how this heartbeat was initiated (default: MANUAL) */
   triggerType: triggerTypeSchema.default('MANUAL'),
 });

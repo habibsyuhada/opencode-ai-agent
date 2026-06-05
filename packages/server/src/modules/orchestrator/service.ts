@@ -365,17 +365,19 @@ async function executeDocumentationTask(
     include: { goal: { include: { project: true } } },
   });
 
+  const projectFolder = task?.goal.project.folderPath || undefined;
   const prompt = task
     ? `Project: ${task.goal.project.name}\nFolder: ${task.goal.project.folderPath}\n\n${task.description || task.title}`
     : undefined;
 
-  // Trigger heartbeat (async execution)
+  // Trigger heartbeat (async execution) with project folder as working directory
   const result = await triggerHeartbeat(
     agentId,
     {
       taskId,
       triggerType: 'MANUAL',
       prompt,
+      workingDirectory: projectFolder,
     },
     companyId
   );

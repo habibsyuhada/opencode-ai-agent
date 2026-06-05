@@ -396,6 +396,12 @@ export class OpenCodeAdapter implements AgentAdapter {
           durationMs,
         });
       });
+
+      // Send the prompt via stdin (more reliable for long prompts)
+      if (proc.stdin) {
+        proc.stdin.write(config.prompt);
+        proc.stdin.end();
+      }
     });
   }
 
@@ -428,10 +434,8 @@ export class OpenCodeAdapter implements AgentAdapter {
       }
     }
 
-    // Add prompt as positional argument (message)
-    if (config.prompt) {
-      args.push(config.prompt);
-    }
+    // Do NOT add prompt as positional arg — it's sent via stdin
+    // (prompts can be very long and cause shell escaping issues)
 
     return args;
   }

@@ -607,8 +607,8 @@ async function executeHeartbeat(
       throw new AdapterUnavailableError();
     }
 
-    // 3. Resolve workspace directory
-    const workingDirectory = await resolveWorkingDirectory(companyId);
+    // 3. Resolve workspace directory (use input override if provided)
+    const workingDirectory = input.workingDirectory || await resolveWorkingDirectory(companyId);
 
     // 4. Augment prompt with skills context
     let augmentedPrompt = prompt;

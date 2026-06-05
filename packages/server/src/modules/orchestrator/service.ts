@@ -85,38 +85,64 @@ export async function createProjectWithAgents(
   });
 
   // 2. Create agent instances from templates (if not already existing)
-  const agents = await ensureAgentsExist(companyId);
+  let agents: any[] = [];
+  try {
+    agents = await ensureAgentsExist(companyId);
+  } catch (err) {
+    logger.error('Failed to ensure agents exist', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    // Continue without agents — project is still created
+  }
 
   // 3. Link orchestrator to project
   const orchestrator = agents.find(a => a.templateKey === 'orchestrator');
   if (orchestrator) {
-    await prisma.project.update({
-      where: { id: project.id },
-      data: { orchestratorId: orchestrator.id },
-    });
+    try {
+      await prisma.project.update({
+        where: { id: project.id },
+        data: { orchestratorId: orchestrator.id },
+      });
+    } catch (err) {
+      logger.error('Failed to link orchestrator', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   // 4. Create initial documentation record
-  await prisma.projectDocumentation.create({
-    data: {
-      projectId: project.id,
-      status: 'DRAFT',
-    },
-  });
+  try {
+    await prisma.projectDocumentation.create({
+      data: {
+        projectId: project.id,
+        status: 'DRAFT',
+      },
+    });
+  } catch (err) {
+    logger.error('Failed to create documentation record', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   // 5. Record activity
-  await recordActivity({
-    companyId,
-    actorType: 'USER',
-    actorId: 'user',
-    action: 'PROJECT_CREATE',
-    targetType: 'PROJECT',
-    targetId: project.id,
-    metadata: {
-      name: data.name,
-      folderPath: data.folderPath,
-    },
-  });
+  try {
+    await recordActivity({
+      companyId,
+      actorType: 'USER',
+      actorId: 'user',
+      action: 'PROJECT_CREATE',
+      targetType: 'PROJECT',
+      targetId: project.id,
+      metadata: {
+        name: data.name,
+        folderPath: data.folderPath,
+      },
+    });
+  } catch (err) {
+    logger.error('Failed to record activity', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return {
     project: await prisma.project.findUnique({
@@ -150,31 +176,39 @@ async function ensureAgentsExist(companyId: string) {
       if (manager) managerId = manager.id;
     }
 
-    const agent = await prisma.agent.create({
-      data: {
-        companyId,
-        name: template.name,
-        role: template.role,
-        title: template.title,
-        managerId,
-        status: 'ACTIVE',
-        isTemplate: true,
-        templateKey: template.key,
-        config: {
-          systemPrompt: template.systemPrompt,
-          tools: template.tools,
-          responsibilities: template.responsibilities,
+    try {
+      const agent = await prisma.agent.create({
+        data: {
+          companyId,
+          name: template.name,
+          role: template.role,
+          title: template.title,
+          managerId,
+          status: 'ACTIVE',
+          isTemplate: true,
+          templateKey: template.key,
+          config: {
+            systemPrompt: template.systemPrompt,
+            tools: template.tools,
+            responsibilities: template.responsibilities,
+          },
         },
-      },
-    });
+      });
 
-    created.push(agent);
-    logger.info('Agent created from template', {
-      agentId: agent.id,
-      name: agent.name,
-      role: agent.role,
-      templateKey: template.key,
-    });
+      created.push(agent);
+      logger.info('Agent created from template', {
+        agentId: agent.id,
+        name: agent.name,
+        role: agent.role,
+        templateKey: template.key,
+      });
+    } catch (err) {
+      logger.error('Failed to create agent from template', {
+        templateKey: template.key,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Continue with other agents
+    }
   }
 
   // Re-fetch all agents to return complete list

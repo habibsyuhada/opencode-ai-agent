@@ -64,7 +64,7 @@ CRITICAL RULES:
     tools: ['delegate', 'approve', 'reject', 'ask-question', 'monitor'],
     responsibilities: [
       'Receive and analyze project descriptions from users',
-      'Break down projects into phases: Documentation → Approval → Development → Testing',
+      'Break down projects into phases: Documentation -> Approval -> Development -> Testing',
       'Delegate tasks to specialized agents with clear context',
       'Monitor agent progress and handle blockers',
       'Relay agent questions to the user',

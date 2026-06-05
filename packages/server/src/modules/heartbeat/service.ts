@@ -662,6 +662,18 @@ async function executeHeartbeat(
     // 10. Update task status based on result
     if (result.success) {
       await updateTaskOnSuccess(task.id, agent.id, result);
+
+      // 10b. Check if this is a documentation task — advance to next phase
+      try {
+        const { advanceDocumentationPhase } = await import('../orchestrator/service.js');
+        await advanceDocumentationPhase(task.id, companyId);
+      } catch (err) {
+        // Non-critical — log and continue
+        logger.debug('Could not advance documentation phase', {
+          taskId: task.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     } else {
       await updateTaskOnFailure(task.id, agent.id, result);
     }

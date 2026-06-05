@@ -17,6 +17,7 @@ import prisma from '../../db/client.js';
 import { getAgentTemplate, AGENT_TEMPLATES } from '../../agents/templates.js';
 import { logger } from '../../utils/logger.js';
 import { recordActivity, ActivityActions } from '../../utils/activity.js';
+import { triggerHeartbeat } from '../heartbeat/service.js';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -325,7 +326,202 @@ export async function startDocumentationPhase(projectId: string, companyId: stri
     tasksCreated: tasks.length,
   });
 
+  // Auto-trigger the first task (PRD) — fire and forget
+  const prdTask = tasks[0];
+  if (prdTask && productOwner) {
+    executeDocumentationTask(prdTask.id, productOwner.id, projectId, companyId).catch((err) => {
+      logger.error('Failed to auto-trigger PRD task', {
+        taskId: prdTask.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+
   return { goal, tasks };
+}
+
+// ── Auto-Execution ────────────────────────────────────────────
+
+/**
+ * Execute a documentation task by triggering a heartbeat.
+ * This is called automatically when tasks are created or when
+ * the previous task completes.
+ */
+async function executeDocumentationTask(
+  taskId: string,
+  agentId: string,
+  projectId: string,
+  companyId: string
+) {
+  // Update task status to IN_PROGRESS
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { status: 'IN_PROGRESS' },
+  });
+
+  // Build a context-rich prompt for the agent
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { goal: { include: { project: true } } },
+  });
+
+  const prompt = task
+    ? `Project: ${task.goal.project.name}\nFolder: ${task.goal.project.folderPath}\n\n${task.description || task.title}`
+    : undefined;
+
+  // Trigger heartbeat (async execution)
+  const result = await triggerHeartbeat(
+    agentId,
+    {
+      taskId,
+      triggerType: 'MANUAL',
+      prompt,
+    },
+    companyId
+  );
+
+  logger.info('Documentation task execution triggered', {
+    taskId,
+    agentId,
+    projectId,
+    heartbeatId: result.heartbeatId,
+    status: result.status,
+  });
+
+  return result;
+}
+
+/**
+ * Advance the documentation phase when a task completes.
+ *
+ * This function is called by the heartbeat service when a heartbeat
+ * completes. It checks if the completed task was a documentation task
+ * and triggers the next task in the sequence.
+ *
+ * Flow: PRD (done) -> Architecture (trigger) -> Stories (trigger) -> READY
+ */
+export async function advanceDocumentationPhase(
+  completedTaskId: string,
+  companyId: string
+) {
+  // Find the completed task and its goal
+  const completedTask = await prisma.task.findUnique({
+    where: { id: completedTaskId },
+    include: {
+      goal: {
+        include: {
+          project: { include: { documentation: true } },
+          tasks: { orderBy: { createdAt: 'asc' } },
+        },
+      },
+    },
+  });
+
+  if (!completedTask) return;
+
+  const goal = completedTask.goal;
+  const project = goal.project;
+
+  // Only handle documentation phase tasks
+  if (goal.phase !== 'DOCUMENTATION') return;
+
+  // Mark completed task as DONE
+  await prisma.task.update({
+    where: { id: completedTaskId },
+    data: { status: 'DONE' },
+  });
+
+  // Check which documentation task was completed
+  const taskTitle = completedTask.title.toLowerCase();
+  const doc = project.documentation;
+
+  if (taskTitle.includes('prd') || taskTitle.includes('requirements')) {
+    // PRD is done — save it to documentation, trigger Architecture
+    if (doc) {
+      // The PRD content should be in the heartbeat output/artifacts
+      // For now, mark PRD as generated
+      await prisma.projectDocumentation.update({
+        where: { projectId: project.id },
+        data: { status: 'GENERATING' },
+      });
+    }
+
+    // Unblock Architecture task
+    const archTask = goal.tasks.find(
+      (t) => t.title.toLowerCase().includes('architecture') && t.status === 'BACKLOG'
+    );
+    if (archTask && archTask.assigneeId) {
+      await prisma.task.update({
+        where: { id: archTask.id },
+        data: { status: 'TODO' },
+      });
+
+      // Auto-trigger Architecture task
+      executeDocumentationTask(archTask.id, archTask.assigneeId, project.id, companyId).catch(
+        (err) => {
+          logger.error('Failed to auto-trigger Architecture task', {
+            taskId: archTask.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      );
+    }
+  } else if (taskTitle.includes('architecture')) {
+    // Architecture is done — trigger Stories
+    const storiesTask = goal.tasks.find(
+      (t) => t.title.toLowerCase().includes('stories') && t.status === 'BACKLOG'
+    );
+    if (storiesTask && storiesTask.assigneeId) {
+      await prisma.task.update({
+        where: { id: storiesTask.id },
+        data: { status: 'TODO' },
+      });
+
+      // Auto-trigger Stories task
+      executeDocumentationTask(storiesTask.id, storiesTask.assigneeId, project.id, companyId).catch(
+        (err) => {
+          logger.error('Failed to auto-trigger Stories task', {
+            taskId: storiesTask.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      );
+    }
+  } else if (taskTitle.includes('stories') || taskTitle.includes('break down')) {
+    // Stories are done — mark documentation as READY for user approval
+    if (doc) {
+      await prisma.projectDocumentation.update({
+        where: { projectId: project.id },
+        data: {
+          status: 'READY',
+          generatedAt: new Date(),
+        },
+      });
+
+      // Update project status
+      await prisma.project.update({
+        where: { id: project.id },
+        data: {
+          status: 'AWAITING_APPROVAL',
+        },
+      });
+    }
+
+    // Mark goal as completed
+    await prisma.goal.update({
+      where: { id: goal.id },
+      data: { status: 'COMPLETED' },
+    });
+
+    logger.info('Documentation phase completed — awaiting user approval', {
+      projectId: project.id,
+    });
+  }
+
+  logger.info('Documentation phase advanced', {
+    completedTask: completedTask.title,
+    projectId: project.id,
+  });
 }
 
 // ── Question Management ───────────────────────────────────────

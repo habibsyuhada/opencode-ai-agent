@@ -254,6 +254,8 @@ export class OpenCodeAdapter implements AgentAdapter {
         const proc = spawn(this.opencodePath, ['--version'], {
           stdio: ['pipe', 'pipe', 'pipe'],
           timeout: 10000,
+          // Windows-specific: use shell for command resolution
+          shell: process.platform === 'win32',
         });
 
         proc.on('exit', (code) => {

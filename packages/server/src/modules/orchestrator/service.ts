@@ -577,6 +577,75 @@ export async function getProjectDetails(projectId: string, companyId: string) {
 }
 
 /**
+ * Update a project's name, description, or folder path.
+ */
+export async function updateProject(
+  projectId: string,
+  data: { name?: string; description?: string; folderPath?: string },
+  companyId: string
+) {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, companyId },
+  });
+
+  if (!project) return null;
+
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.folderPath !== undefined && { folderPath: data.folderPath }),
+    },
+    include: { orchestrator: true, documentation: true },
+  });
+
+  await recordActivity({
+    companyId,
+    actorType: 'USER',
+    actorId: 'user',
+    action: 'PROJECT_UPDATE',
+    targetType: 'PROJECT',
+    targetId: projectId,
+    metadata: data,
+  });
+
+  logger.info('Project updated', { projectId, changes: Object.keys(data) });
+
+  return updated;
+}
+
+/**
+ * Delete a project and all related data (cascades via Prisma relations).
+ */
+export async function deleteProject(projectId: string, companyId: string) {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, companyId },
+  });
+
+  if (!project) return null;
+
+  // Delete cascades: documentation, questions, goals -> tasks -> heartbeats
+  await prisma.project.delete({
+    where: { id: projectId },
+  });
+
+  await recordActivity({
+    companyId,
+    actorType: 'USER',
+    actorId: 'user',
+    action: 'PROJECT_DELETE',
+    targetType: 'PROJECT',
+    targetId: projectId,
+    metadata: { name: project.name },
+  });
+
+  logger.info('Project deleted', { projectId, name: project.name });
+
+  return project;
+}
+
+/**
  * List all projects for a company.
  */
 export async function listProjects(companyId: string) {

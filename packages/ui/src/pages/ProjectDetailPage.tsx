@@ -22,6 +22,7 @@ import {
   Play,
   FolderOpen,
   Send,
+  Trash2,
 } from 'lucide-react';
 import { useActiveCompany } from '@/hooks/useCompanies';
 
@@ -117,6 +118,19 @@ export function ProjectDetailPage() {
     },
   });
 
+  // Delete project mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await fetchJson(`${BASE_URL}/api/orchestrator/projects/${id}`, {
+        method: 'DELETE', headers,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orchestrator-projects'] });
+      navigate('/projects');
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -165,6 +179,18 @@ export function ProjectDetailPage() {
             <p className="text-sm text-gray-600 mt-1">{project.description}</p>
           )}
         </div>
+        <button
+          onClick={() => {
+            if (confirm('Are you sure you want to delete this project? This cannot be undone.')) {
+              deleteMutation.mutate();
+            }
+          }}
+          disabled={deleteMutation.isPending}
+          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="Delete project"
+        >
+          {deleteMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+        </button>
       </div>
 
       {/* Project Info */}

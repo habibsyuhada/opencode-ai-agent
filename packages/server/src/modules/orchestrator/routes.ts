@@ -18,6 +18,8 @@ import {
   createProjectWithAgents,
   listProjects,
   getProjectDetails,
+  updateProject,
+  deleteProject,
   startDocumentationPhase,
   approveDocumentation,
   getPendingQuestions,
@@ -79,6 +81,50 @@ orchestrator.get('/projects/:id', async (c) => {
   }
 
   return c.json({ data: project });
+});
+
+/**
+ * PATCH /api/orchestrator/projects/:id
+ * Update a project's name, description, or folder path.
+ * Body: { name?, description?, folderPath? }
+ */
+orchestrator.patch('/projects/:id', async (c) => {
+  const user = c.get('user');
+  const { id } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    const result = await updateProject(id, body, user.companyId);
+    if (!result) {
+      return c.json({ error: 'Project not found' }, 404);
+    }
+    return c.json({ data: result });
+  } catch (err) {
+    return c.json({
+      error: err instanceof Error ? err.message : 'Failed to update project',
+    }, 400);
+  }
+});
+
+/**
+ * DELETE /api/orchestrator/projects/:id
+ * Delete a project and all related data (cascades).
+ */
+orchestrator.delete('/projects/:id', async (c) => {
+  const user = c.get('user');
+  const { id } = c.req.param();
+
+  try {
+    const result = await deleteProject(id, user.companyId);
+    if (!result) {
+      return c.json({ error: 'Project not found' }, 404);
+    }
+    return c.json({ data: { deleted: true, id } });
+  } catch (err) {
+    return c.json({
+      error: err instanceof Error ? err.message : 'Failed to delete project',
+    }, 400);
+  }
 });
 
 // ── Documentation Phase ───────────────────────────────────────

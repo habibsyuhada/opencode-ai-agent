@@ -1,0 +1,19 @@
+{
+  "name": "armiai-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @armiai/server dev\" \"pnpm --filter @armiai/ui dev\"",
+    "dev:server": "pnpm --filter @armiai/server dev",
+    "dev:ui": "pnpm --filter @armiai/ui dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:generate": "pnpm --filter @armiai/server db:generate",
+    "db:migrate": "pnpm --filter @armiai/server db:migrate",
+    "db:seed": "pnpm --filter @armiai/server db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}

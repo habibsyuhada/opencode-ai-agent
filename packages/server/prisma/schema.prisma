@@ -1,0 +1,337 @@
+// ArmiAI Platform — Prisma Schema
+// See docs/schema/SCHEMA-AND-API.md for full design rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────────────────────
+// Company — Top-level tenant
+// ──────────────────────────────────────────────────────────────
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  mission   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agents          Agent[]
+  projects        Project[]
+  budgets         Budget[]
+  approvals       Approval[]
+  activityEvents  ActivityEvent[]
+  routines        Routine[]
+  secrets         Secret[]
+  workspaces      Workspace[]
+  userCompanies   UserCompany[]
+}
+
+// ──────────────────────────────────────────────────────────────
+// User — Platform user (for multi-company access)
+// ──────────────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("USER") // ADMIN, USER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userCompanies UserCompany[]
+}
+
+// ──────────────────────────────────────────────────────────────
+// UserCompany — Junction table for multi-company access
+// ──────────────────────────────────────────────────────────────
+model UserCompany {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  role      String   @default("MEMBER") // OWNER, ADMIN, MEMBER
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([userId])
+  @@index([companyId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Workspace — Physical/logical working area
+// ──────────────────────────────────────────────────────────────
+model Workspace {
+  id        String   @id @default(cuid())
+  companyId String
+  path      String   // Absolute path to the physical workspace on disk
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Agent — AI actor in the Org Chart
+// ──────────────────────────────────────────────────────────────
+model Agent {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  role      String   // e.g., 'scrum-master', 'developer', 'qa-engineer'
+  title     String?
+  managerId String?  // Self-relation for org chart
+  status    String   @default("ACTIVE") // ACTIVE, PAUSED, TERMINATED
+  config    Json?    // Optional overrides for the OpenCode template
+  createdAt DateTime @default(now())
+
+  company    Company    @relation(fields: [companyId], references: [id])
+  manager    Agent?     @relation("OrgChart", fields: [managerId], references: [id])
+  reports    Agent[]    @relation("OrgChart")
+  tasks      Task[]     @relation("TaskAssignee")
+  budgets    Budget[]
+  heartbeats Heartbeat[]
+
+  @@index([companyId])
+  @@index([managerId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Project — High-level container
+// ──────────────────────────────────────────────────────────────
+model Project {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  goals   Goal[]
+
+  @@index([companyId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Goal — Mid-level objective
+// ──────────────────────────────────────────────────────────────
+model Goal {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  status    String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+
+  project Project @relation(fields: [projectId], references: [id])
+  tasks   Task[]
+
+  @@index([projectId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Task — Actionable item
+// ──────────────────────────────────────────────────────────────
+model Task {
+  id          String   @id @default(cuid())
+  goalId      String
+  assigneeId  String?
+  title       String
+  description String?
+  status      String   @default("BACKLOG") // BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
+  priority    String   @default("MEDIUM")  // LOW, MEDIUM, HIGH, CRITICAL
+  lockedAt    DateTime? // Used for atomic checkout
+  artifacts   Json?     // Array of paths (e.g., ['docs/stories/STORY-001.md'])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goal       Goal        @relation(fields: [goalId], references: [id])
+  assignee   Agent?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  heartbeats Heartbeat[]
+
+  @@index([goalId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([goalId, status])       // Compound: list tasks by goal+status (Kanban queries)
+  @@index([assigneeId, status])   // Compound: agent task queue (auto-pick queries)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Heartbeat — A single execution run
+// ──────────────────────────────────────────────────────────────
+model Heartbeat {
+  id         String   @id @default(cuid())
+  taskId     String
+  agentId    String
+  status     String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+  startedAt  DateTime?
+  endedAt    DateTime?
+  log        String?
+  tokensUsed Int      @default(0)
+  cost       Float    @default(0.0)
+
+  task        Task         @relation(fields: [taskId], references: [id])
+  agent       Agent        @relation(fields: [agentId], references: [id])
+  costEvents  CostEvent[]
+  routineRuns RoutineRun[]
+
+  @@index([taskId])
+  @@index([agentId])
+  @@index([status])
+  @@index([agentId, status])      // Compound: agent stats + orphan recovery queries
+  @@index([status, startedAt])    // Compound: orphan detection (RUNNING + stale time)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Budget — Financial constraints
+// ──────────────────────────────────────────────────────────────
+model Budget {
+  id        String   @id @default(cuid())
+  companyId String
+  agentId   String?  // If null, represents the global company budget
+  monthly   Float
+  used      Float    @default(0.0)
+  currency  String   @default("USD")
+  threshold Float    @default(0.8) // 80%
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  agent   Agent?  @relation(fields: [agentId], references: [id])
+
+  @@index([companyId])
+  @@index([agentId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// CostEvent — Record of expenditure
+// ──────────────────────────────────────────────────────────────
+model CostEvent {
+  id          String   @id @default(cuid())
+  heartbeatId String
+  provider    String
+  model       String
+  tokensIn    Int
+  tokensOut   Int
+  cost        Float
+  createdAt   DateTime @default(now())
+
+  heartbeat Heartbeat @relation(fields: [heartbeatId], references: [id])
+
+  @@index([heartbeatId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Approval — Governance gate
+// ──────────────────────────────────────────────────────────────
+model Approval {
+  id          String   @id @default(cuid())
+  companyId   String
+  type        String
+  requestedBy String   // Agent or System
+  targetType  String
+  targetId    String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  decision    String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@index([status])
+  @@index([companyId, status])    // Compound: governance filtering (pending approvals per company)
+}
+
+// ──────────────────────────────────────────────────────────────
+// ActivityEvent — Audit log entry
+// ──────────────────────────────────────────────────────────────
+model ActivityEvent {
+  id         String   @id @default(cuid())
+  companyId  String
+  actorType  String   // 'USER' or 'AGENT' or 'SYSTEM'
+  actorId    String
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([companyId, createdAt])  // Compound: activity feed (recent events per company)
+}
+
+// ──────────────────────────────────────────────────────────────
+// Routine — Scheduled job
+// ──────────────────────────────────────────────────────────────
+model Routine {
+  id                 String   @id @default(cuid())
+  companyId          String
+  agentId            String?
+  name               String
+  description        String?
+  cron               String
+  action             String   // System action to trigger
+  enabled            Boolean  @default(true)
+  concurrencyPolicy  String   @default("ALLOW_OVERLAP") // ALLOW_OVERLAP, SKIP_IF_RUNNING, QUEUE
+  catchUpPolicy      String   @default("SKIP")          // SKIP, RUN_ONCE, RUN_ALL
+  maxConcurrentRuns  Int      @default(1)
+  timeoutMs          Int?     // Optional execution timeout
+  lastRunAt          DateTime?
+  nextRunAt          DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company Company      @relation(fields: [companyId], references: [id])
+  runs    RoutineRun[]
+
+  @@index([companyId])
+  @@index([enabled])
+  @@index([nextRunAt])
+  @@index([companyId, enabled])   // Compound: scheduler queries (enabled routines per company)
+}
+
+// ──────────────────────────────────────────────────────────────
+// RoutineRun — History of a routine execution
+// ──────────────────────────────────────────────────────────────
+model RoutineRun {
+  id          String    @id @default(cuid())
+  routineId   String
+  heartbeatId String?   // Link to heartbeat if one was created
+  status      String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED, SKIPPED
+  startedAt   DateTime?
+  endedAt     DateTime?
+  log         String?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  routine   Routine   @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  heartbeat Heartbeat? @relation(fields: [heartbeatId], references: [id])
+
+  @@index([routineId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ──────────────────────────────────────────────────────────────
+// Secret — Encrypted configuration
+// ──────────────────────────────────────────────────────────────
+model Secret {
+  id             String @id @default(cuid())
+  companyId      String
+  name           String
+  encryptedValue String
+  scope          String // 'GLOBAL' or 'AGENT'
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@unique([companyId, name])
+}

@@ -260,10 +260,27 @@ export function SettingsPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder='{ "anthropic": { "options": { "apiKey": "sk-..." } } }'
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 mb-2">
                   Configure API keys and provider-specific settings. Format must be valid JSON. 
                   Alternatively, you can set keys via environment variables (e.g. ANTHROPIC_API_KEY).
                 </p>
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                  <p className="text-xs font-semibold text-gray-700 mb-1">Example Format:</p>
+                  <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap">
+{`{
+  "anthropic": {
+    "options": {
+      "apiKey": "sk-ant-..."
+    }
+  },
+  "openai": {
+    "options": {
+      "apiKey": "sk-proj-..."
+    }
+  }
+}`}
+                  </pre>
+                </div>
               </div>
             </div>
           )}

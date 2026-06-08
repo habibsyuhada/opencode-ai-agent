@@ -35,3 +35,5 @@ packages/server/prisma/migrations/
 
 # Vite
 *.tsbuildinfo
+
+packages/server/opencode.json

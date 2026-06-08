@@ -42,19 +42,18 @@ import activityRoutes from './modules/activity/routes.js';
 import routinesRoutes from './modules/routines/routes.js';
 import secretsRoutes from './modules/secrets/routes.js';
 import orchestratorRoutes from './modules/orchestrator/routes.js';
+import configRoutes from './modules/config/routes.js';
 
-// ── Build API Sub-Application (chained for RPC type inference) ──
+// "?"? Build API Sub-Application (chained for RPC type inference) "?"?
 //
 // Method chaining is essential for Hono RPC: each .route() call
 // returns a new Hono type with the merged schema. Imperative calls
-// (api.route(...) as a statement) do NOT update the TypeScript type,
-// so hc<AppType>() would see no routes.
-
+// (e.g. app.route(...) without assignment) break type inference.
 const api = new Hono()
   // Auth + company scope middleware applied to all /api routes
   .use('*', authMiddleware)
   .use('*', companyScopeMiddleware)
-  // API root — returns available endpoints
+  // API root ?" returns available endpoints
   .get('/', (c) => {
     return c.json({
       message: 'ArmiAI Platform API',
@@ -71,29 +70,34 @@ const api = new Hono()
         activity: '/api/activity',
         routines: '/api/routines',
         secrets: '/api/secrets',
+        config: '/api/config',
         orchestrator: '/api/orchestrator',
       },
     });
   })
-  // Core resource routes
-  .route('/companies', companiesRoutes)
+  // Mount module routes via method chaining
+  // Agents / HR routes
   .route('/agents', agentsRoutes)
+  // Project / Work routes
   .route('/projects', projectsRoutes)
   .route('/goals', goalsRoutes)
   .route('/tasks', tasksRoutes)
+  // Tenant / Company settings
+  .route('/companies', companiesRoutes)
+  // Execution / Runtime routes
   .route('/heartbeats', heartbeatsRoutes)
-  // Agent-specific heartbeat trigger endpoint: POST /api/agents/:agentId/heartbeat
-  .route('/agents/:agentId/heartbeat', agentHeartbeats)
-  // Budget & cost tracking routes
+  // Financial routes
   .route('/budgets', budgetRoutes)
-  // Governance / approval workflow routes
+  // Governance / Workflow routes
   .route('/approvals', approvalsRoutes)
-  // Activity feed / audit log routes
+  // Audit / Event log routes
   .route('/activity', activityRoutes)
   // Routines / scheduled jobs routes
   .route('/routines', routinesRoutes)
   // Secrets management routes (encrypted at rest, masked in responses)
   .route('/secrets', secretsRoutes)
+  // Workspace Config routes
+  .route('/config', configRoutes)
   // Orchestrator routes (project workflow management)
   .route('/orchestrator', orchestratorRoutes);
 

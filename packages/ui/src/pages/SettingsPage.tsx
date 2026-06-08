@@ -15,7 +15,7 @@
  * Story: STORY-017 — Dashboard UI: Secret Management
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Key,
   Plus,
@@ -26,8 +26,12 @@ import {
   AlertCircle,
   X,
   Search,
+  Cpu,
+  Save,
+  CheckCircle,
 } from 'lucide-react';
 import { useSecrets, useCreateSecret, useDeleteSecret } from '@/hooks/useSecrets';
+import { useWorkspaceConfig, useSaveWorkspaceConfig } from '@/hooks/useWorkspaceConfig';
 import type { SecretScope, CreateSecretInput } from '@/hooks/useSecrets';
 
 // ── Constants ────────────────────────────────────────────────
@@ -48,14 +52,25 @@ export function SettingsPage() {
   const [scopeFilter, setScopeFilter] = useState<SecretScope | ''>('');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Queries & mutations
-  const { data: secrets = [], isLoading } = useSecrets(
+  // Queries & mutations for secrets
+  const { data: secrets = [], isLoading: isLoadingSecrets } = useSecrets(
     scopeFilter ? { scope: scopeFilter as SecretScope } : undefined,
   );
   const createMutation = useCreateSecret();
   const deleteMutation = useDeleteSecret();
 
-  // Form state
+  // Queries & mutations for config
+  const { data: config, isLoading: isLoadingConfig } = useWorkspaceConfig();
+  const saveConfigMutation = useSaveWorkspaceConfig();
+
+  // Config state
+  const [modelInput, setModelInput] = useState('');
+  const [smallModelInput, setSmallModelInput] = useState('');
+  const [providerConfigText, setProviderConfigText] = useState('{\n  \n}');
+  const [configSuccess, setConfigSuccess] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  // Form state for secrets
   const [formName, setFormName] = useState('');
   const [formValue, setFormValue] = useState('');
   const [formScope, setFormScope] = useState<SecretScope>('GLOBAL');
@@ -64,6 +79,47 @@ export function SettingsPage() {
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // Sync config data into form
+  useEffect(() => {
+    if (config) {
+      setModelInput(config.model || '');
+      setSmallModelInput(config.small_model || '');
+      setProviderConfigText(
+        config.provider ? JSON.stringify(config.provider, null, 2) : '{\n  \n}'
+      );
+    }
+  }, [config]);
+
+  const handleSaveConfig = () => {
+    setConfigError(null);
+    setConfigSuccess(false);
+
+    let parsedProvider = {};
+    try {
+      parsedProvider = JSON.parse(providerConfigText);
+    } catch (err: any) {
+      setConfigError(`Invalid JSON in Provider Settings: ${err.message}`);
+      return;
+    }
+
+    saveConfigMutation.mutate(
+      {
+        model: modelInput,
+        small_model: smallModelInput,
+        provider: parsedProvider,
+      },
+      {
+        onSuccess: () => {
+          setConfigSuccess(true);
+          setTimeout(() => setConfigSuccess(false), 3000);
+        },
+        onError: (err: any) => {
+          setConfigError(err.message || 'Failed to save configuration');
+        },
+      }
+    );
+  };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +168,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -122,14 +178,107 @@ export function SettingsPage() {
         <p className="text-gray-500">Manage secrets and workspace configuration</p>
       </div>
 
-      {/* ── Secrets Section ──────────────────────────────────── */}
+      {/* 🤖 Workspace Config Section 
+============================================================================= */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        {/* Section header */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Cpu size={18} className="text-gray-500" />
+            <h2 className="text-lg font-semibold text-gray-900">Agent Configuration (opencode.json)</h2>
+          </div>
+          <button
+            onClick={handleSaveConfig}
+            disabled={saveConfigMutation.isPending || isLoadingConfig}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+          >
+            <Save size={16} />
+            {saveConfigMutation.isPending ? 'Saving...' : 'Save Configuration'}
+          </button>
+        </div>
+
+        {/* Config Form */}
+        <div className="p-6">
+          {isLoadingConfig ? (
+            <div className="flex h-32 items-center justify-center text-gray-500">Loading configuration...</div>
+          ) : (
+            <div className="space-y-6 max-w-4xl">
+              {configError && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                  <AlertCircle size={16} />
+                  {configError}
+                </div>
+              )}
+              {configSuccess && (
+                <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                  <CheckCircle size={16} />
+                  Configuration saved successfully. Note: You may need to restart the agent for changes to take effect.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="modelInput" className="block text-sm font-medium text-gray-700 mb-1">
+                    Primary Model
+                  </label>
+                  <input
+                    id="modelInput"
+                    type="text"
+                    value={modelInput}
+                    onChange={(e) => setModelInput(e.target.value)}
+                    placeholder="e.g., anthropic/claude-3-5-sonnet-latest"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Used for complex tasks (planning, coding)</p>
+                </div>
+
+                <div>
+                  <label htmlFor="smallModelInput" className="block text-sm font-medium text-gray-700 mb-1">
+                    Small Model
+                  </label>
+                  <input
+                    id="smallModelInput"
+                    type="text"
+                    value={smallModelInput}
+                    onChange={(e) => setSmallModelInput(e.target.value)}
+                    placeholder="e.g., anthropic/claude-3-haiku-latest"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Used for fast, low-cost tasks (summarizing, review)</p>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="providerConfig" className="block text-sm font-medium text-gray-700 mb-1">
+                  Provider Settings (JSON)
+                </label>
+                <textarea
+                  id="providerConfig"
+                  value={providerConfigText}
+                  onChange={(e) => setProviderConfigText(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder='{ "anthropic": { "options": { "apiKey": "sk-..." } } }'
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Configure API keys and provider-specific settings. Format must be valid JSON. 
+                  Alternatively, you can set keys via environment variables (e.g. ANTHROPIC_API_KEY).
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 🔐 Secrets Section 
+============================================================================= */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* Section header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-2">
             <Shield size={18} className="text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Secrets</h2>
-            {!isLoading && (
+            <h2 className="text-lg font-semibold text-gray-900">Database Secrets</h2>
+            {!isLoadingSecrets && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
                 {secrets.length}
               </span>
@@ -279,13 +428,9 @@ export function SettingsPage() {
         </div>
 
         {/* Secrets table */}
-        {isLoading ? (
-          <div className="p-6 space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : secrets.length === 0 ? (
+            {isLoadingSecrets ? (
+              <div className="flex h-32 items-center justify-center text-gray-500">Loading secrets...</div>
+            ) : secrets.length === 0 ? (
           <div className="p-12 text-center">
             <Key size={48} className="mx-auto text-gray-300 mb-4" />
             <p className="text-gray-500 font-medium">No secrets configured</p>

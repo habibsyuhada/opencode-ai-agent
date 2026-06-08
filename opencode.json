@@ -48,7 +48,7 @@
     },
     "product-owner": {
       "description": "Turns raw ideas into PRD documents.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/product-owner.txt}",
       "tools": {
         "read": true,
@@ -59,7 +59,7 @@
     },
     "solution-architect": {
       "description": "Creates architecture documents from approved PRDs.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/solution-architect.txt}",
       "tools": {
         "read": true,
@@ -70,7 +70,7 @@
     },
     "story-sharding-agent": {
       "description": "Splits PRD and architecture into traceable dev stories.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/story-sharding-agent.txt}",
       "tools": {
         "read": true,
@@ -81,7 +81,7 @@
     },
     "scrum-master": {
       "description": "Queues stories, reviews completion, and closes release notes.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/scrum-master.txt}",
       "tools": {
         "read": true,
@@ -95,7 +95,7 @@
     },
     "planner": {
       "description": "Creates implementation plans for complex stories before coding.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/planner.txt}",
       "tools": {
         "read": true,
@@ -106,7 +106,7 @@
     },
     "developer": {
       "description": "General full-stack implementation for one queued story.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/developer.txt}",
       "tools": {
         "read": true,
@@ -120,7 +120,7 @@
     },
     "frontend-developer": {
       "description": "Frontend/UI specialist for high-quality interfaces, component structure, responsive design, and UX polish.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/frontend-developer.txt}",
       "tools": {
         "read": true,
@@ -133,7 +133,7 @@
     },
     "backend-developer": {
       "description": "Backend/API specialist for services, data flows, validation, and integration logic.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/backend-developer.txt}",
       "tools": {
         "read": true,
@@ -146,7 +146,7 @@
     },
     "tdd-engineer": {
       "description": "Test-first specialist that designs and improves unit/integration tests.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/tdd-engineer.txt}",
       "tools": {
         "read": true,
@@ -159,7 +159,7 @@
     },
     "build-error-resolver": {
       "description": "Fixes build, lint, and type errors with minimal diffs.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/build-error-resolver.txt}",
       "tools": {
         "read": true,
@@ -172,7 +172,7 @@
     },
     "code-reviewer": {
       "description": "Reviews changed code for quality, maintainability, and scope control.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/code-reviewer.txt}",
       "tools": {
         "read": true,
@@ -184,7 +184,7 @@
     },
     "frontend-reviewer": {
       "description": "Reviews frontend output for visual hierarchy, responsiveness, accessibility, and design-system consistency.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/frontend-reviewer.txt}",
       "tools": {
         "read": true,
@@ -195,7 +195,7 @@
     },
     "security-reviewer": {
       "description": "Reviews security risks in code, APIs, auth, secrets, and user input handling.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/security-reviewer.txt}",
       "tools": {
         "read": true,
@@ -207,7 +207,7 @@
     },
     "database-reviewer": {
       "description": "Reviews schema, queries, indexes, migrations, and data integrity.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/database-reviewer.txt}",
       "tools": {
         "read": true,
@@ -218,7 +218,7 @@
     },
     "qa-engineer": {
       "description": "Runs QA, verifies acceptance criteria, and writes bug reports.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/qa-engineer.txt}",
       "tools": {
         "read": true,
@@ -231,7 +231,7 @@
     },
     "bugfix-developer": {
       "description": "Fixes QA-reported bugs and creates bugfix notes.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/bugfix-developer.txt}",
       "tools": {
         "read": true,
@@ -244,7 +244,7 @@
     },
     "e2e-runner": {
       "description": "Creates and runs end-to-end tests for critical user journeys.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/e2e-runner.txt}",
       "tools": {
         "read": true,
@@ -256,7 +256,7 @@
     },
     "docs-updater": {
       "description": "Updates documentation, changelogs, codemaps, and runbooks.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/docs-updater.txt}",
       "tools": {
         "read": true,
@@ -267,7 +267,7 @@
     },
     "refactor-cleaner": {
       "description": "Removes dead code and improves structure without changing behavior.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/refactor-cleaner.txt}",
       "tools": {
         "read": true,
@@ -279,7 +279,7 @@
     },
     "devops-release-engineer": {
       "description": "Reviews deployment, CI/CD, release readiness, and operational notes.",
-      "mode": "subagent",
+      "mode": "primary",
       "prompt": "{file:.opencode/prompts/agents/devops-release-engineer.txt}",
       "tools": {
         "read": true,
